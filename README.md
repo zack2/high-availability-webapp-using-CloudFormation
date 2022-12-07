@@ -11,3 +11,5 @@ Students may use a JSON file for increasing the generic nature of the YAML code.
 In YAML code, the `${EnvironmentName}` would be substituted with `UdacityProject` accordingly.
 The infrastructure in image
 ![infrastructure Diagram](/img/UdacityProjectVPC.png "UdacityProject infrastructure Diagram")
+
+Public URL of load balancer 👉🏽: http://udaci-ALBWe-1LS4VG6KZG6YK-184648214.us-east-1.elb.amazonaws.com
