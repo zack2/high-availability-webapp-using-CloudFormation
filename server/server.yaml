@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  Zack olivier | The project is about to deploy an Apache Web Server for a highly available web app and 
+  code from S3 Bucket and deploy it on the web server using AWS Cloud Formation.
+Parameters:
+
+  EnvironmentName:
+    Type: String
+    Description: Please enter environment name, used as part of value for Name tag
+
+  WebServerImageId:
+    Type: AWS::EC2::Image::Id
+    Description: Please enter an AMI of ubuntu 18
+
+  WebServerInstanceType:
+    Type: String
+    Description: Please enter the instance type for the web server
+
+  PrivateSubnetId1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please enter the private subnet 1 id
+
+  PrivateSubnetId2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please enter the private subnet 2 id
+
+  PublicSubnetId1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please enter the public subnet 1 id
+
+  PublicSubnetId2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Please enter the public subnet 2 id
+
+Resources:
+
+  LBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: load balancer
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+
+  WebServersSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to our hosts and SSH from local only
+      GroupName: WebServers SG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 0
+          IpProtocol: tcp
+          ToPort: 65535
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+  UdacityProjectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Allow read only s3 permissions for ec2 resource(s)
+      Path: /
+      Policies:
+        - PolicyName: AmazonS3ReadOnlyAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:Get*
+                Resource: '*'
+
+  UdacityProjectInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref UdacityProjectRole
+
+  WebServersLaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            DeleteOnTermination: true
+            VolumeSize: 10
+            VolumeType: gp2
+      IamInstanceProfile: !Ref UdacityProjectInstanceProfile
+      ImageId: !Ref WebServerImageId
+      InstanceType: !Ref WebServerInstanceType
+      SecurityGroups:
+        - !Ref WebServersSecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          apt-get update -y
+          apt-get install unzip awscli apache2 -y
+          systemctl start apache2.service
+          cd /var/www/html
+          aws s3 cp s3://zack-udacity-project/udacity-starter-website.zip .
+          unzip -o udacity.zip
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 15
+      HealthCheckPath: /
+      HealthCheckPort: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 3
+      HealthyThresholdCount: 2
+      Matcher:
+        HttpCode: 200
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      TargetType: instance
+      UnhealthyThresholdCount: 5
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+
+  WebServersAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: Web Servers ASG
+      DesiredCapacity: 4
+      HealthCheckGracePeriod: 15
+      HealthCheckType: ELB
+      LaunchConfigurationName: !Ref WebServersLaunchConfiguration
+      MaxSize: 6
+      MinSize: 4
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      VPCZoneIdentifier:
+        - Fn::ImportValue:
+            !Sub "${EnvironmentName}-PRIV-NETS"
+
+  ALBWebServers:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref LBSecurityGroup
+      Subnets:
+        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+        - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
+      Type: application
+
+  ALBWebServersListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref ALBTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ALBWebServers
+      Port: 80
+      Protocol: HTTP
+
+  ALBWebServersListenerRule1:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - TargetGroupArn: !Ref ALBTargetGroup
+          Type: forward
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /
+      ListenerArn: !Ref ALBWebServersListener
+      Priority: 1
+
+Outputs:
+  PublicUrlLoadBalancer:
+    Description: Public HTTP Url of the Load Balancer
+    Value: !Join [ '', [ 'http://', !GetAtt ALBWebServers.DNSName ] ]

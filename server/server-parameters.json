@@ -2,5 +2,29 @@
 	{
 		"ParameterKey": "EnvironmentName",
 		"ParameterValue": "UdacityProject"
+	},
+	{
+		"ParameterKey": "WebServerImageId",
+		"ParameterValue": "ami-00ddb0e5626798373"
+	},
+	{
+		"ParameterKey": "WebServerInstanceType",
+		"ParameterValue": "t3.medium"
+	},
+	{
+		"ParameterKey": "PrivateSubnetId1",
+		"ParameterValue": "subnet-02b848699932a51bc"
+	},
+	{
+		"ParameterKey": "PrivateSubnetId2",
+		"ParameterValue": "subnet-09d49648eaf27f3b6"
+	},
+	{
+		"ParameterKey": "PublicSubnetId1",
+		"ParameterValue": "subnet-00b4fe954d2777c11"
+	},
+	{
+		"ParameterKey": "PublicSubnetId2",
+		"ParameterValue": "subnet-0641840c337f1f8f5"
 	}
 ]
