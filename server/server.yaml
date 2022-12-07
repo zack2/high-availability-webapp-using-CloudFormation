@@ -16,21 +16,6 @@ Parameters:
     Type: String
     Description: Please enter the instance type for the web server
 
-  PrivateSubnetId1:
-    Type: AWS::EC2::Subnet::Id
-    Description: Please enter the private subnet 1 id
-
-  PrivateSubnetId2:
-    Type: AWS::EC2::Subnet::Id
-    Description: Please enter the private subnet 2 id
-
-  PublicSubnetId1:
-    Type: AWS::EC2::Subnet::Id
-    Description: Please enter the public subnet 1 id
-
-  PublicSubnetId2:
-    Type: AWS::EC2::Subnet::Id
-    Description: Please enter the public subnet 2 id
 
 Resources:
 
@@ -120,8 +105,10 @@ Resources:
           apt-get install unzip awscli apache2 -y
           systemctl start apache2.service
           cd /var/www/html
+          rm index.html
           aws s3 cp s3://zack-udacity-project/udacity-starter-website.zip .
-          unzip -o udacity.zip
+          unzip -o udacity-starter-website.zip
+          systemctl restart apache2.service
 
   ALBTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
