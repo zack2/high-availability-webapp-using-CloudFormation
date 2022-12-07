@@ -14,4 +14,4 @@ The infrastructure in image
 
 Public URL of load balancer 👉🏽: http://udaci-albwe-90er0bojay9l-1915125289.us-east-1.elb.amazonaws.com/
 
-![website deployed](/img/3 - website-deployed.png "UdacityProject infrastructure Diagram")
+![website deployed](/img/wedsite-deploy.PNG "website deployed")
