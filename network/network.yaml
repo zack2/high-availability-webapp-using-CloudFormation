@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: > 
+Description: >
   Zack olivier | The project is about to deploy an Apache Web Server for a highly available web app and 
   code from S3 Bucket and deploy it on the web server using AWS Cloud Formation.
 Parameters:
@@ -41,3 +41,15 @@ Resources:
       Tags:
         - Key: name
           Value: !Ref EnvironmentName
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
